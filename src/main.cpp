@@ -1,72 +1,105 @@
 #include <Arduino.h>
-#include <TFT_eSPI.h>
+
+#include "fonts/NotoSansBold15.h"
+#include "fonts/NotoSansBold36.h"
+#include "fonts/NotoSansMonoSCB20.h"
+
+// The font names are arrays references, thus must NOT be in quotes ""
+#define AA_FONT_SMALL NotoSansBold15
+#define AA_FONT_LARGE NotoSansBold36
+#define AA_FONT_MONO  NotoSansMonoSCB20 // NotoSansMono-SemiCondensedBold 20pt
+
 #include <SPI.h>
-#include <Button2.h>
-#define ADC_EN 14 //ADC_EN is the ADC detection enable port
+#include <TFT_eSPI.h>       // Hardware-specific library
 
-TFT_eSPI tft = TFT_eSPI();
+TFT_eSPI    tft = TFT_eSPI();
+TFT_eSprite spr = TFT_eSprite(&tft); // Sprite class needs to be invoked
 
-void espDelay(int ms);
+uint8_t currentScreen = 0;
 
-void setup()
-{
+void setup(void) {
   Serial.begin(115200);
-  Serial.println("Start");
-
-  /*
-    ADC_EN is the ADC detection enable port
-    If the USB port is used for power supply, it is turned on by default.
-    If it is powered by battery, it needs to be set to high level
-    */
-  pinMode(ADC_EN, OUTPUT);
-  digitalWrite(ADC_EN, HIGH);
-
-  tft.init();
+  tft.begin();
   tft.setRotation(1);
+  spr.setColorDepth(16); // 16 bit colour needed to show antialiased fonts
   tft.fillScreen(TFT_BLACK);
-  tft.setTextSize(2);
-  tft.setTextColor(TFT_GREEN);
-  tft.setCursor(0, 0);
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextSize(1);
+}
 
-  if (TFT_BL > 0)
-  {                                         // TFT_BL has been set in the TFT_eSPI library in the User Setup file TTGO_T_Display.h
-    pinMode(TFT_BL, OUTPUT);                // Set backlight pin to output mode
-    digitalWrite(TFT_BL, TFT_BACKLIGHT_ON); // Turn backlight on. TFT_BACKLIGHT_ON has been set in the TFT_eSPI library in the User Setup file TTGO_T_Display.h
+void loop() {
+  // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+  // Small font
+  // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+  spr.loadFont(AA_FONT_SMALL); // Must load the font first into the sprite class
+
+  spr.createSprite(128, 32);   // Create a sprite 100 pixels wide and 50 high
+
+  spr.fillSprite(TFT_BLACK);
+
+  spr.setTextColor(TFT_YELLOW, TFT_BLACK); // Set the sprite font colour and the background colour
+
+  spr.setTextDatum(MC_DATUM); // Middle Centre datum
+  
+  spr.drawString("Temperature", 50, 25 ); // Coords of middle of 100 x 50 Sprite
+
+  spr.pushSprite(10, 10); // Push to TFT screen coord 10, 10
+
+  spr.pushSprite(10, 70, TFT_BLUE); // Push to TFT screen, TFT_BLUE is transparent
+ 
+  spr.unloadFont(); // Remove the font from sprite class to recover memory used
+
+  delay(4000);
+
+  // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+  // Large font
+  // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+  tft.fillScreen(TFT_BLACK);
+
+  // Beware: Sprites are a differerent "class" to TFT, so different fonts can be loaded
+  // in the tft and sprite instances, so load the font in the class instance you use!
+  // In this example this means the spr. instance.
+
+  spr.loadFont(AA_FONT_LARGE); // Load another different font into the sprite instance
+
+  // 100 x 50 sprite was created above and still exists...
+
+  spr.fillSprite(TFT_GREEN);
+
+  spr.setTextColor(TFT_BLACK, TFT_GREEN); // Set the font colour and the background colour
+
+  spr.setTextDatum(MC_DATUM); // Middle Centre datum
+
+  spr.drawString("Fits", 50, 25); // Make sure text fits in the Sprite!
+  spr.pushSprite(10, 10);         // Push to TFT screen coord 10, 10
+
+  spr.fillSprite(TFT_RED);
+  spr.setTextColor(TFT_WHITE, TFT_RED); // Set the font colour and the background colour
+
+  spr.drawString("Too big", 50, 25); // Text is too big to all fit in the Sprite!
+  spr.pushSprite(10, 70);            // Push to TFT screen coord 10, 70
+
+  // Draw changing numbers - no flicker using this plot method!
+
+  // >>>> Note: it is best to use drawNumber() and drawFloat() for numeric values <<<<
+  // >>>> this reduces digit position movement when the value changes             <<<<
+  // >>>> drawNumber() and drawFloat() functions behave like drawString() and are <<<<
+  // >>>> supported by setTextDatum() and setTextPadding()                        <<<<
+
+  spr.setTextDatum(TC_DATUM); // Top Centre datum
+
+  spr.setTextColor(TFT_WHITE, TFT_BLUE); // Set the font colour and the background colour
+
+  for (int i = 0; i <= 200; i++) {
+    spr.fillSprite(TFT_BLUE);
+    spr.drawFloat(i / 100.0, 2, 50, 10); // draw with 2 decimal places at 50,10 in sprite
+    spr.pushSprite(10, 130); // Push to TFT screen coord 10, 130
+    delay (20);
   }
 
-  espDelay(5000);
+  spr.unloadFont(); // Remove the font to recover memory used
 
-  tft.setRotation(0);
-  tft.fillScreen(TFT_RED);
-  espDelay(1000);
-  tft.fillScreen(TFT_BLUE);
-  espDelay(1000);
-  tft.fillScreen(TFT_GREEN);
-  espDelay(1000);
-
-  tft.fillScreen(TFT_BLACK);
-  tft.setTextDatum(MC_DATUM);
-
-  tft.drawString("LeftButton:", tft.width() / 2, tft.height() / 2 - 16);
-  tft.drawString("[WiFi Scan]", tft.width() / 2, tft.height() / 2);
-  tft.drawString("RightButton:", tft.width() / 2, tft.height() / 2 + 16);
-  tft.drawString("[Voltage Monitor]", tft.width() / 2, tft.height() / 2 + 32);
-  tft.drawString("RightButtonLongPress:", tft.width() / 2, tft.height() / 2 + 48);
-  tft.drawString("[Deep Sleep]", tft.width() / 2, tft.height() / 2 + 64);
-  tft.setTextDatum(TL_DATUM);
-}
-
-void loop()
-{
-  // put your main code here, to run repeatedly:
-}
-
-//! Long time delay, it is recommended to use shallow sleep, which can effectively reduce the current consumption
-void espDelay(int ms)
-{
-  esp_sleep_enable_timer_wakeup(ms * 1000);
-  esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
-  esp_light_sleep_start();
+  spr.deleteSprite(); // Recover memory
+  
+  delay(8000);
 }
