@@ -3,17 +3,20 @@
 #include "fonts/NotoSansBold15.h"
 #include "fonts/NotoSansBold36.h"
 #include "fonts/NotoSansMonoSCB20.h"
+#include "fonts/Unicode_Test_72.h"
 
 // The font names are arrays references, thus must NOT be in quotes ""
 #define AA_FONT_SMALL NotoSansBold15
 #define AA_FONT_LARGE NotoSansBold36
 #define AA_FONT_MONO  NotoSansMonoSCB20 // NotoSansMono-SemiCondensedBold 20pt
+#define FONT_FINAL  Unicode_Test_72 // NotoSansMono-SemiCondensedBold 20pt
 
 #include <SPI.h>
 #include <TFT_eSPI.h>       // Hardware-specific library
 
 TFT_eSPI    tft = TFT_eSPI();
 TFT_eSprite spr = TFT_eSprite(&tft); // Sprite class needs to be invoked
+TFT_eSprite spr2 = TFT_eSprite(&tft); // Sprite class needs to be invoked
 
 uint8_t currentScreen = 0;
 
@@ -26,58 +29,25 @@ void setup(void) {
 }
 
 void loop() {
-  // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-  // Small font
-  // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+  spr.loadFont(AA_FONT_SMALL);
+  spr.createSprite(128, 32);
+  spr.setTextColor(TFT_LIGHTGREY, TFT_BLACK); // Set the sprite font colour and the background colour
+  spr.setTextDatum(TL_DATUM);
+  spr.drawString("Temperature", 0, 0 );
+  spr.pushSprite(10, 10);
 
-  spr.loadFont(AA_FONT_SMALL); // Must load the font first into the sprite class
+  spr2.loadFont(AA_FONT_LARGE);
+  spr2.createSprite(200, 80);
+  spr2.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
+  spr2.setTextDatum(TL_DATUM);
+  spr2.drawString("24.3 C", 0, 0);
+  spr2.pushSprite(10, 30);
 
-  spr.createSprite(128, 32);   // Create a sprite 100 pixels wide and 50 high
+  delay(5000);
 
-  spr.fillSprite(TFT_BLACK);
-
-  spr.setTextColor(TFT_YELLOW, TFT_BLACK); // Set the sprite font colour and the background colour
-
-  spr.setTextDatum(MC_DATUM); // Middle Centre datum
-  
-  spr.drawString("Temperature", 50, 25 ); // Coords of middle of 100 x 50 Sprite
-
-  spr.pushSprite(10, 10); // Push to TFT screen coord 10, 10
-
-  spr.pushSprite(10, 70, TFT_BLUE); // Push to TFT screen, TFT_BLUE is transparent
- 
-  spr.unloadFont(); // Remove the font from sprite class to recover memory used
-
-  delay(4000);
-
-  // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-  // Large font
-  // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-  tft.fillScreen(TFT_BLACK);
-
-  // Beware: Sprites are a differerent "class" to TFT, so different fonts can be loaded
-  // in the tft and sprite instances, so load the font in the class instance you use!
-  // In this example this means the spr. instance.
-
-  spr.loadFont(AA_FONT_LARGE); // Load another different font into the sprite instance
-
-  // 100 x 50 sprite was created above and still exists...
-
-  spr.fillSprite(TFT_GREEN);
-
-  spr.setTextColor(TFT_BLACK, TFT_GREEN); // Set the font colour and the background colour
-
-  spr.setTextDatum(MC_DATUM); // Middle Centre datum
-
-  spr.drawString("Fits", 50, 25); // Make sure text fits in the Sprite!
-  spr.pushSprite(10, 10);         // Push to TFT screen coord 10, 10
-
-  spr.fillSprite(TFT_RED);
-  spr.setTextColor(TFT_WHITE, TFT_RED); // Set the font colour and the background colour
-
-  spr.drawString("Too big", 50, 25); // Text is too big to all fit in the Sprite!
-  spr.pushSprite(10, 70);            // Push to TFT screen coord 10, 70
+  spr2.drawString("4.2 C", 0, 0);
+  spr2.pushSprite(10, 30);
+  delay(5000);
 
   // Draw changing numbers - no flicker using this plot method!
 
@@ -86,20 +56,16 @@ void loop() {
   // >>>> drawNumber() and drawFloat() functions behave like drawString() and are <<<<
   // >>>> supported by setTextDatum() and setTextPadding()                        <<<<
 
-  spr.setTextDatum(TC_DATUM); // Top Centre datum
+  // for (int i = 0; i <= 200; i++) {
+  //   spr.fillSprite(TFT_BLUE);
+  //   spr.drawFloat(i / 100.0, 2, 50, 10); // draw with 2 decimal places at 50,10 in sprite
+  //   spr.pushSprite(10, 130); // Push to TFT screen coord 10, 130
+  //   delay (20);
+  // }
 
-  spr.setTextColor(TFT_WHITE, TFT_BLUE); // Set the font colour and the background colour
+  // spr.unloadFont(); // Remove the font to recover memory used
 
-  for (int i = 0; i <= 200; i++) {
-    spr.fillSprite(TFT_BLUE);
-    spr.drawFloat(i / 100.0, 2, 50, 10); // draw with 2 decimal places at 50,10 in sprite
-    spr.pushSprite(10, 130); // Push to TFT screen coord 10, 130
-    delay (20);
-  }
-
-  spr.unloadFont(); // Remove the font to recover memory used
-
-  spr.deleteSprite(); // Recover memory
+  // spr.deleteSprite(); // Recover memory
   
-  delay(8000);
+  // delay(8000);
 }
