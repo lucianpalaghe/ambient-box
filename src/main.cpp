@@ -1,4 +1,7 @@
 #include <Arduino.h>
+#include <Button2.h>
+#include <SPI.h>
+#include <TFT_eSPI.h>
 
 #include "fonts/NotoSansBold15.h"
 #include "fonts/NotoSansBold36.h"
@@ -8,27 +11,41 @@
 // The font names are arrays references, thus must NOT be in quotes ""
 #define AA_FONT_SMALL NotoSansBold15
 #define AA_FONT_LARGE NotoSansBold36
-#define AA_FONT_MONO  NotoSansMonoSCB20 // NotoSansMono-SemiCondensedBold 20pt
-#define FONT_FINAL  Unicode_Test_72 // NotoSansMono-SemiCondensedBold 20pt
 
-#define BUTTON_1        0
-#define TFT_BL          4  // Display backlight control pin
+#define BUTTON_TOP 35
+#define BUTTON_BOTTOM 0
+#define TFT_BL 4 // Display backlight control pin
 
-#include <SPI.h>
-#include <TFT_eSPI.h>       // Hardware-specific library
-#include <Button2.h>
+#define SCREEN_HEIGHT 135
+#define SCREEN_WIDTH 240
 
-TFT_eSPI    tft = TFT_eSPI();
-TFT_eSprite spr = TFT_eSprite(&tft); // Sprite class needs to be invoked
+#define MARGIN_LEFT 15
+#define MARGIN_TOP 10
+
+enum ScreenArea { TOP,
+                  BOTTOM };
+
+TFT_eSPI tft = TFT_eSPI();
+TFT_eSprite spr = TFT_eSprite(&tft);  // Sprite class needs to be invoked
 TFT_eSprite spr2 = TFT_eSprite(&tft); // Sprite class needs to be invoked
 
-Button2 btn1(BUTTON_1);
+Button2 btn1(BUTTON_TOP);
+Button2 btn2(BUTTON_BOTTOM);
 
 uint8_t currentScreen = 0;
 boolean btnClick = false;
 
+unsigned long previousMillis = 0;
+const long interval = 2000;
+
+void drawScreen();
 void drawTemperature(float temp);
-void drawAltitude(uint16_t altitud);
+void drawAltitude(int16_t altitude);
+void drawHumidity(uint8_t hum);
+void drawPressure(int32_t pa);
+void drawTitleSprite(const char *text, ScreenArea area);
+void drawMeasurementSprite(const char *value, const char *unitOfMeasure, ScreenArea area);
+void clearSpriteFonts();
 
 void setup(void) {
   Serial.begin(115200);
@@ -37,69 +54,121 @@ void setup(void) {
   spr.setColorDepth(16); // 16 bit colour needed to show antialiased fonts
   tft.fillScreen(TFT_BLACK);
 
-   btn1.setPressedHandler([](Button2 & b) {
-     Serial.println("Click");
-        btnClick = !btnClick;
-        if(btnClick) {
-          digitalWrite(TFT_BL, LOW);
-        } else {
-          digitalWrite(TFT_BL, HIGH);
-        }
-    });
+  btn1.setPressedHandler([](Button2 &b) {
+    btnClick = !btnClick;
+    if (btnClick) {
+      digitalWrite(TFT_BL, LOW);
+    } else {
+      digitalWrite(TFT_BL, HIGH);
+    }
+  });
 
-    Serial.println("Finish init");
+  btn2.setPressedHandler([](Button2 &b) {
+    currentScreen++;
+    if (currentScreen > 1) {
+      currentScreen = 0;
+    }
+    drawScreen();
+  });
 }
 
 void loop() {
-  for(uint16_t i = 0; i< 100;i++) {
-    drawTemperature(random(1, 99) - 50 + random(1, 99) / 100.0);
-    drawAltitude(i + random(1, 99));
-    btn1.loop();
-    delay(2000);
+  unsigned long currentMillis = millis();
+
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+
+    drawScreen();
   }
 
+  btn1.loop();
+  btn2.loop();
+}
+
+void drawScreen() {
+  switch (currentScreen) {
+  case 0:
+    drawTemperature(random(1, 99) - 50 + random(1, 99) / 100.0);
+    drawAltitude(random(1, 9999));
+    break;
+  case 1:
+    drawHumidity(random(1, 100));
+    drawPressure(random(1, 9999));
+  default:
+    break;
+  }
 }
 
 void drawTemperature(float temp) {
-  spr.loadFont(AA_FONT_SMALL);
-  spr.createSprite(128, 32);
-  spr.setTextColor(TFT_LIGHTGREY, TFT_BLACK); // Set the sprite font colour and the background colour
-  spr.setTextDatum(TL_DATUM);
-  spr.drawString("Temperature", 0, 0);
-  spr.pushSprite(15, 10);
-
-  spr2.loadFont(AA_FONT_LARGE);
-  spr2.createSprite(200, 80);
-  spr2.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
-  spr2.setTextDatum(TL_DATUM);
-  uint16_t xOffset = spr2.drawFloat(temp, 2, 0, 0);
-  spr2.drawString("C", xOffset + 5, 0);
-  spr2.pushSprite(15, 30);
-
-  spr.unloadFont(); // Remove the font to recover memory used
-  spr.deleteSprite(); // Recover memory
-  spr2.unloadFont(); // Remove the font to recover memory used
-  spr2.deleteSprite(); // Recover memory
+  drawTitleSprite("Temperature", TOP);
+  char tempChar[10];
+  drawMeasurementSprite(dtostrf(temp, -10, 2, tempChar), "C", TOP);
+  clearSpriteFonts();
 }
 
-void drawAltitude(uint16_t altitude) {
+void drawAltitude(int16_t altitude) {
+  drawTitleSprite("Altitude", BOTTOM);
+  char altitudeChar[10];
+  drawMeasurementSprite(itoa(altitude, altitudeChar, 10), "m", BOTTOM);
+  clearSpriteFonts();
+}
+
+void drawHumidity(uint8_t hum) {
+  drawTitleSprite("Humidity", TOP);
+  char humChar[4];
+  drawMeasurementSprite(itoa(hum, humChar, 10), "%", TOP);
+  clearSpriteFonts();
+}
+
+void drawPressure(int32_t pa) {
+  drawTitleSprite("Pressure", BOTTOM);
+  char pressureChar[10];
+  drawMeasurementSprite(itoa(pa, pressureChar, 10), "Pa", BOTTOM);
+  clearSpriteFonts();
+}
+
+void drawTitleSprite(const char *text, ScreenArea area) {
+  uint8_t verticalPosition = 0;
+  switch (area) {
+  case TOP:
+    verticalPosition = 0;
+    break;
+  case BOTTOM:
+    verticalPosition = 64;
+    break;
+  }
+
   spr.loadFont(AA_FONT_SMALL);
-  spr.createSprite(128, 32);
+  spr.createSprite(SCREEN_WIDTH - MARGIN_LEFT, 32);
   spr.setTextColor(TFT_LIGHTGREY, TFT_BLACK); // Set the sprite font colour and the background colour
   spr.setTextDatum(TL_DATUM);
-  spr.drawString("Altitude", 0, 0);
-  spr.pushSprite(15, 74);
+  spr.drawString(text, 0, 0);
+  spr.pushSprite(MARGIN_LEFT, verticalPosition + MARGIN_TOP);
+}
+
+void drawMeasurementSprite(const char *value, const char *unitOfMeasure, ScreenArea area) {
+  uint8_t verticalPosition = 0;
+  switch (area) {
+  case TOP:
+    verticalPosition = 20;
+    break;
+  case BOTTOM:
+    verticalPosition = 84;
+    break;
+  }
 
   spr2.loadFont(AA_FONT_LARGE);
-  spr2.createSprite(200, 80);
+  spr2.createSprite(SCREEN_WIDTH - MARGIN_LEFT, 80);
   spr2.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
   spr2.setTextDatum(TL_DATUM);
-  uint16_t xOffset = spr2.drawNumber(altitude, 0, 0);
-  spr2.drawString("m", xOffset + 5, 0);
-  spr2.pushSprite(15, 94);
+  uint16_t uomOffset = spr2.drawString(value, 0, 0);
+  spr2.drawString(unitOfMeasure, uomOffset + 5, 0);
+  spr2.pushSprite(MARGIN_LEFT, verticalPosition + MARGIN_TOP);
+}
 
-  spr.unloadFont(); // Remove the font to recover memory used
-  spr.deleteSprite(); // Recover memory
-  spr2.unloadFont(); // Remove the font to recover memory used
-  spr2.deleteSprite(); // Recover memory
+void clearSpriteFonts() {
+  spr.unloadFont();
+  spr.deleteSprite();
+  spr2.unloadFont();
+  spr2.deleteSprite();
 }
