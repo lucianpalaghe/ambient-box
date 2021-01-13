@@ -30,14 +30,8 @@ BatteryLevel getBatteryLevel();
 void setup(void) {
   Serial.begin(115200);
 
-  /*
-    ADC_EN is the ADC detection enable port
-    If the USB port is used for power supply, it is turned on by default.
-    If it is powered by battery, it needs to be set to high level
-    */
-    pinMode(PIN_ADC, OUTPUT);
-    digitalWrite(PIN_ADC, HIGH);
-
+  pinMode(PIN_ADC, OUTPUT);
+  digitalWrite(PIN_ADC, HIGH);
 
   initUI();
   initButtons();
@@ -62,7 +56,7 @@ void drawScreen() {
 
   switch (currentScreen) {
   case 0:
-    // drawTemperature(random(1, 99) - 50 + random(1, 99) / 100.0);
+    drawTemperature(random(1, 99) - 50 + random(1, 99) / 100.0);
     drawAltitude(random(1, 9999));
     break;
   case 1:
@@ -98,7 +92,7 @@ BatteryLevel getBatteryLevel() {
   float batteryVoltage = (measurement / 4095.0) * 2.0 * 3.3 * (vref / 1000.0);
   digitalWrite(PIN_ADC_EN, LOW);
   
-  drawTemperature(batteryVoltage);
+  // drawTemperature(batteryVoltage);
   Serial.println(batteryVoltage);
   if(batteryVoltage >= 3.6) {
     return BAT_HIGH;

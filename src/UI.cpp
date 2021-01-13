@@ -8,12 +8,12 @@
 
 #include "fonts/NotoSansBold15.h"
 #include "fonts/NotoSansBold36.h"
-#include "fonts/IcoFontBT12.h"
+#include "fonts/IcoFontBT18.h"
 #include "fonts/IcoFont36.h"
 
 #define AA_FONT_SMALL NotoSansBold15
 #define AA_FONT_LARGE NotoSansBold36
-#define AA_FONT_ICONS_BT IcoFontBT12
+#define AA_FONT_ICONS_BT IcoFontBT18
 #define AA_FONT_ICONS IcoFont36
 
 #define SCREEN_HEIGHT 135
@@ -30,8 +30,7 @@ TFT_eSprite spriteStatus = TFT_eSprite(&tft);
 uint32_t foregroundColor = TFT_LIGHTGREY;
 uint32_t backgroundColor = TFT_BLACK;
 
-void initUI()
-{
+void initUI() {
   tft.begin();
   tft.setRotation(1);
   spriteTitle.setColorDepth(16);
@@ -41,47 +40,52 @@ void initUI()
   
 }
 
-void invertColorScheme()
-{
+void invertColorScheme() {
   uint32_t c = foregroundColor;
   foregroundColor = backgroundColor;
   backgroundColor = c;
   tft.fillScreen(backgroundColor);
 }
 
-void drawTemperature(float temp)
-{
+void drawTemperature(float temp) {
   drawTitleSprite("Temperature", TOP);
   char tempChar[10];
-  drawMeasurementSprite(dtostrf(temp, -10, 2, tempChar), "C", TOP);
+  drawMeasurementSprite(dtostrf(temp, -10, 2, tempChar), "\u2103", TOP);
+
+  char tempIcon[4] = ICON_THERMOMETER;
+  if(temp > 24) { // temperature higher than 24 C will display HOT icon
+    strcpy(tempIcon, ICON_TEMP_HOT);
+  } else if(temp < 3) { // temperature lower than 3 C will display COLD icon
+    strcpy(tempIcon, ICON_TEMP_COLD);
+  }
+
+  drawMeasurementIcon(tempIcon, TOP);
 }
 
-void drawAltitude(int16_t altitude)
-{
+void drawAltitude(int16_t altitude) {
   drawTitleSprite("Altitude", BOTTOM);
   char altitudeChar[10];
   drawMeasurementSprite(itoa(altitude, altitudeChar, 10), "m", BOTTOM);
+  drawMeasurementIcon(ICON_MOUNTAIN, BOTTOM);
 }
 
-void drawHumidity(uint8_t hum)
-{
+void drawHumidity(uint8_t hum) {
   drawTitleSprite("Humidity", TOP);
   char humChar[4];
   drawMeasurementSprite(itoa(hum, humChar, 10), "%", TOP);
+  drawMeasurementIcon(ICON_DROP, TOP);
 }
 
-void drawPressure(int32_t pa)
-{
+void drawPressure(int32_t pa) {
   drawTitleSprite("Pressure", BOTTOM);
   char pressureChar[10];
   drawMeasurementSprite(itoa(pa, pressureChar, 10), "Pa", BOTTOM);
+  drawMeasurementIcon("", BOTTOM); // no icon for pressure, clear the screen for whatever was at that position
 }
 
-void drawTitleSprite(const char *text, ScreenArea area)
-{
+void drawTitleSprite(const char *text, ScreenArea area) {
   uint8_t verticalPosition = 0;
-  switch (area)
-  {
+  switch (area) {
   case TOP:
     verticalPosition = 0;
     break;
@@ -101,11 +105,9 @@ void drawTitleSprite(const char *text, ScreenArea area)
   spriteTitle.deleteSprite();
 }
 
-void drawMeasurementSprite(const char *value, const char *unitOfMeasure, ScreenArea area)
-{
+void drawMeasurementSprite(const char *value, const char *unitOfMeasure, ScreenArea area) {
   uint8_t verticalPosition = 0;
-  switch (area)
-  {
+  switch (area) {
   case TOP:
     verticalPosition = 20;
     break;
@@ -115,7 +117,7 @@ void drawMeasurementSprite(const char *value, const char *unitOfMeasure, ScreenA
   }
 
   spriteMeasurement.loadFont(AA_FONT_LARGE);
-  spriteMeasurement.createSprite(SCREEN_WIDTH - MARGIN_LEFT - 40, 80);
+  spriteMeasurement.createSprite(SCREEN_WIDTH - MARGIN_LEFT - 45, 80);
   spriteMeasurement.fillSprite(backgroundColor);
   spriteMeasurement.setTextColor(foregroundColor, backgroundColor);
   spriteMeasurement.setTextDatum(TL_DATUM);
@@ -130,8 +132,7 @@ void drawBatteryStatus(const char *value) {
   drawBatteryStatus(value, foregroundColor);
 }
 
-void drawBatteryStatus(const char *value, uint16_t textColor)
-{
+void drawBatteryStatus(const char *value, uint16_t textColor) {
   spriteStatus.loadFont(AA_FONT_ICONS);
   spriteStatus.createSprite(36, 22);
   spriteStatus.fillSprite(backgroundColor);
@@ -143,8 +144,29 @@ void drawBatteryStatus(const char *value, uint16_t textColor)
   spriteStatus.deleteSprite();
 }
 
-void drawBT(boolean on)
-{
+void drawMeasurementIcon(const char *value, ScreenArea area) {
+  uint8_t verticalPosition = 0;
+  switch (area) {
+  case TOP:
+    verticalPosition = 27;
+    break;
+  case BOTTOM:
+    verticalPosition = 95;
+    break;
+  }
+
+  spriteStatus.loadFont(AA_FONT_ICONS);
+  spriteStatus.createSprite(36, 36);
+  spriteStatus.fillSprite(backgroundColor);
+  spriteStatus.setTextColor(foregroundColor, backgroundColor);
+  spriteStatus.setTextDatum(MC_DATUM);
+  spriteStatus.drawString(value, 18, 16);
+  spriteStatus.pushSprite(SCREEN_WIDTH - 60, verticalPosition);
+  spriteStatus.unloadFont();
+  spriteStatus.deleteSprite();
+}
+
+void drawBT(boolean on) {
   spriteStatus.loadFont(AA_FONT_ICONS_BT);
   spriteStatus.createSprite(16, 20);
   spriteStatus.fillSprite(backgroundColor);
