@@ -50,7 +50,7 @@ void invertColorScheme() {
 void drawTemperature(float temp) {
   drawTitleSprite("Temperature", TOP);
   char tempChar[10];
-  drawMeasurementSprite(dtostrf(temp, -10, 2, tempChar), "\u2103", TOP);
+  drawMeasurementSprite(dtostrf(temp, -10, 1, tempChar), "\u2103", TOP);
 
   char tempIcon[4] = ICON_THERMOMETER;
   if(temp > 24) { // temperature higher than 24 C will display HOT icon
@@ -69,17 +69,17 @@ void drawAltitude(int16_t altitude) {
   drawMeasurementIcon(ICON_MOUNTAIN, BOTTOM);
 }
 
-void drawHumidity(uint8_t hum) {
+void drawHumidity(float hum) {
   drawTitleSprite("Humidity", TOP);
-  char humChar[4];
-  drawMeasurementSprite(itoa(hum, humChar, 10), "%", TOP);
+  char humChar[5];
+  drawMeasurementSprite(dtostrf(hum, -10, 1, humChar), "%", TOP);
   drawMeasurementIcon(ICON_DROP, TOP);
 }
 
-void drawPressure(int32_t pa) {
+void drawPressure(float pa) {
   drawTitleSprite("Pressure", BOTTOM);
   char pressureChar[10];
-  drawMeasurementSprite(itoa(pa, pressureChar, 10), "Pa", BOTTOM);
+  drawMeasurementSprite(dtostrf(pa, -10, 0, pressureChar), "Pa", BOTTOM);
   drawMeasurementIcon("", BOTTOM); // no icon for pressure, clear the screen for whatever was at that position
 }
 
