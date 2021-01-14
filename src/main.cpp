@@ -30,11 +30,13 @@ const long interval = 2000;
 void drawMeasurements();
 void initButtons();
 void drawStatusBar();
-void initBatteryVref();
 BatteryLevel getBatteryLevel();
+float getBatteryVoltage();
+void initBatteryVref();
 
+void initSensor();
 float temperatureCompensatedAltitude(int32_t pressure, float temp=21.0, float seaLevel=1013.25);
-void checkIaqSensorStatus(void);
+boolean isSensorOk();
 
 // Create an object of the class Bsec
 Bsec sensor;
@@ -56,31 +58,7 @@ void setup(void) {
   initUI();
   initButtons();
   initBatteryVref();
-
-  Wire.begin();
-
-  sensor.begin(BME680_I2C_ADDR_PRIMARY, Wire);
-  output = "\nBSEC library version " + String(sensor.version.major) + "." + String(sensor.version.minor) + "." + String(sensor.version.major_bugfix) + "." + String(sensor.version.minor_bugfix);
-  Serial.println(output);
-  checkIaqSensorStatus();
-
-  sensor.setConfig(bsec_config_iaq);
-  checkIaqSensorStatus();
-
-  
-  bsec_virtual_sensor_t sensorList[4] = {
-    BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE,
-    BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_HUMIDITY,
-    BSEC_OUTPUT_RAW_PRESSURE,
-    BSEC_OUTPUT_IAQ,
-  };
-
-  sensor.updateSubscription(sensorList, 4, BSEC_SAMPLE_RATE_LP);
-  sensor.setTemperatureOffset(1.0);
-  checkIaqSensorStatus();
-
-  output = "Timestamp [ms], temperature [°C], relative humidity [%], pressure [hPa], IAQ, IAQ accuracy";
-  Serial.println(output);
+  initSensor();
 }
 
 float temperatureCompensatedAltitude(int32_t pressure, float temp, float seaLevel) {
@@ -89,28 +67,14 @@ float temperatureCompensatedAltitude(int32_t pressure, float temp, float seaLeve
   return(altitude);
 } 
 
-// Helper function definitions
-void checkIaqSensorStatus(void)
+boolean isSensorOk()
 {
-  if (sensor.status != BSEC_OK) {
-    if (sensor.status < BSEC_OK) {
-      output = "BSEC error code : " + String(sensor.status);
-      Serial.println(output);
-    } else {
-      output = "BSEC warning code : " + String(sensor.status);
-      Serial.println(output);
-    }
+  if (sensor.status != BSEC_OK || sensor.bme680Status != BME680_OK) {
+    Serial.println(sensor.status);
+    Serial.println(sensor.bme680Status);
+    return false;
   }
-
-  if (sensor.bme680Status != BME680_OK) {
-    if (sensor.bme680Status < BME680_OK) {
-      output = "BME680 error code : " + String(sensor.bme680Status);
-      Serial.println(output);
-    } else {
-      output = "BME680 warning code : " + String(sensor.bme680Status);
-      Serial.println(output);
-    }
-  }
+  return true;
 }
 
 void loop() {
@@ -119,10 +83,9 @@ void loop() {
   if (currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis;
 
-    drawStatusBar(getBatteryLevel(), true);
-
-    if (sensor.run()) { // If new data is available
-
+    boolean btStatus = true;
+    boolean sensorStatus = true;
+    if (sensor.run()) { // if new sensor data is available
       sensorTemperature = sensor.temperature;
       sensorHumidity = sensor.humidity;
       sensorPressure = sensor.pressure;
@@ -130,19 +93,12 @@ void loop() {
       sensorIaqAccuracy = sensor.iaqAccuracy;
       calculatedAltitude = temperatureCompensatedAltitude(sensorPressure, sensorTemperature);
 
-      unsigned long time_trigger = millis();
-      output = String(time_trigger);
-      output += ", " + String(sensorTemperature);
-      output += ", " + String(sensorHumidity);
-      output += ", " + String(sensorPressure);
-      output += ", " + String(sensorIaq);
-      output += ", " + String(sensorIaqAccuracy);
-      Serial.println(output);
-
       drawMeasurements();
     } else {
-      checkIaqSensorStatus();
+      sensorStatus = isSensorOk();
     }
+
+    drawStatusBar(getBatteryLevel(), sensorStatus, btStatus);
   }
 
   btnTop.loop();
@@ -164,21 +120,20 @@ void drawMeasurements() {
 }
 
 BatteryLevel getBatteryLevel() {
-  digitalWrite(PIN_ADC_EN, HIGH);
-  delay(1);
-  float measurement = (float) analogRead(34);
-  float batteryVoltage = (measurement / 4095.0) * 2.0 * 3.3 * (vref / 1000.0);
-  digitalWrite(PIN_ADC_EN, LOW);
-  
-  // drawTemperature(batteryVoltage);
+  float batteryVoltage = getBatteryVoltage();
+
   Serial.println(batteryVoltage);
-  if(batteryVoltage >= 3.6) {
+  if(batteryVoltage >= 4.85) {
+    return BAT_CHARGING;
+  } else if(batteryVoltage >= 4.85 && batteryVoltage > 3.6) {
     return BAT_HIGH;
   } else if(batteryVoltage >= 3.3 && batteryVoltage < 3.6) {
     return BAT_MEDIUM;
   } else if(batteryVoltage < 3.3) {
     return BAT_LOW;
   }
+
+  return BAT_UNKNOWN;
 }
 
 void initButtons() {
@@ -193,6 +148,7 @@ void initButtons() {
 
   btnTop.setLongClickHandler([](Button2 &b) {
     invertColorScheme();
+    drawStatusBar(getBatteryLevel(), false, true);
     drawMeasurements();
   });
 
@@ -203,10 +159,32 @@ void initButtons() {
     }
     drawMeasurements();
   });
+}
 
-  // btnBottom.setLongClickHandler([](Button2 &b) {
-  //  digitalWrite(PIN_ADC_EN, LOW);
-  // });
+void initSensor() {
+  Wire.begin();
+
+  sensor.begin(BME680_I2C_ADDR_PRIMARY, Wire);
+  sensor.setConfig(bsec_config_iaq);
+
+  bsec_virtual_sensor_t sensorList[4] = {
+    BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_TEMPERATURE,
+    BSEC_OUTPUT_SENSOR_HEAT_COMPENSATED_HUMIDITY,
+    BSEC_OUTPUT_RAW_PRESSURE,
+    BSEC_OUTPUT_IAQ,
+  };
+
+  sensor.updateSubscription(sensorList, 4, BSEC_SAMPLE_RATE_LP);
+  sensor.setTemperatureOffset(1.0);
+}
+
+float getBatteryVoltage() {
+  digitalWrite(PIN_ADC_EN, HIGH);
+  delay(1);
+  float measurement = (float) analogRead(34);
+  float batteryVoltage = (measurement / 4095.0) * 2.0 * 3.3 * (vref / 1000.0);
+  digitalWrite(PIN_ADC_EN, LOW);
+  return batteryVoltage;
 }
 
 void initBatteryVref() {

@@ -1,7 +1,7 @@
 #include <Arduino.h>
 
 enum ScreenArea { TOP, BOTTOM };
-enum BatteryLevel { BAT_HIGH, BAT_MEDIUM, BAT_LOW };
+enum BatteryLevel { BAT_LOW, BAT_MEDIUM, BAT_HIGH, BAT_CHARGING, BAT_UNKNOWN };
 
 void initUI();
 void invertColorScheme();
@@ -14,5 +14,5 @@ void drawMeasurementSprite(const char *value, const char *unitOfMeasure, ScreenA
 void drawMeasurementIcon(const char *value, ScreenArea area);
 void drawBatteryStatus(const char *value);
 void drawBatteryStatus(const char *value, uint16_t textColor);
-void drawBTStatus(boolean on);
-void drawStatusBar(BatteryLevel battery, boolean btConnected);
+void drawState(boolean sensorState, boolean btState);
+void drawStatusBar(BatteryLevel battery, boolean sensorOk, boolean btConnected);

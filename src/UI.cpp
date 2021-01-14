@@ -73,14 +73,19 @@ void drawHumidity(float hum) {
   drawTitleSprite("Humidity", TOP);
   char humChar[5];
   drawMeasurementSprite(dtostrf(hum, -10, 1, humChar), "%", TOP);
-  drawMeasurementIcon(ICON_DROP, TOP);
+
+  char tempIcon[4] = ICON_DROP;
+  if(hum > 95) { // humidity higher than 24 C will display UMBRELLA icon
+    strcpy(tempIcon, ICON_UMBRELLA);
+  }
+  drawMeasurementIcon(tempIcon, TOP);
 }
 
 void drawPressure(float pa) {
   drawTitleSprite("Pressure", BOTTOM);
   char pressureChar[10];
   drawMeasurementSprite(dtostrf(pa, -10, 0, pressureChar), "Pa", BOTTOM);
-  drawMeasurementIcon("", BOTTOM); // no icon for pressure, clear the screen for whatever was at that position
+  drawMeasurementIcon(ICON_PRESSURE, BOTTOM);
 }
 
 void drawTitleSprite(const char *text, ScreenArea area) {
@@ -95,7 +100,7 @@ void drawTitleSprite(const char *text, ScreenArea area) {
   }
 
   spriteTitle.loadFont(AA_FONT_SMALL);
-  spriteTitle.createSprite(SCREEN_WIDTH - MARGIN_LEFT - 60, 32);
+  spriteTitle.createSprite(SCREEN_WIDTH - MARGIN_LEFT - 76, 32);
   spriteTitle.fillSprite(backgroundColor);
   spriteTitle.setTextColor(foregroundColor, backgroundColor);
   spriteTitle.setTextDatum(TL_DATUM);
@@ -138,7 +143,7 @@ void drawBatteryStatus(const char *value, uint16_t textColor) {
   spriteStatus.fillSprite(backgroundColor);
   spriteStatus.setTextColor(textColor, backgroundColor);
   spriteStatus.setTextDatum(MC_DATUM);
-  spriteStatus.drawString(value, 18, 12);
+  spriteStatus.drawString(value, 18, 11);
   spriteStatus.pushSprite(200, 0);
   spriteStatus.unloadFont();
   spriteStatus.deleteSprite();
@@ -166,23 +171,34 @@ void drawMeasurementIcon(const char *value, ScreenArea area) {
   spriteStatus.deleteSprite();
 }
 
-void drawBT(boolean on) {
+void drawState(boolean sensorState, boolean btState) {
+  String state = "";
+  if(!sensorState) {
+    state += ICON_WARNING;
+  }
+  if(btState) {
+    state += ICON_BLUETOOTH;
+  }
+  
   spriteStatus.loadFont(AA_FONT_ICONS_BT);
-  spriteStatus.createSprite(16, 20);
+  spriteStatus.createSprite(32, 18);
   spriteStatus.fillSprite(backgroundColor);
   spriteStatus.setTextColor(foregroundColor, backgroundColor);
-  spriteStatus.setTextDatum(TL_DATUM);
+  spriteStatus.setTextDatum(TR_DATUM);
   spriteStatus.setTextSize(5);
-  spriteStatus.drawString(on ? ICON_BLUETOOTH : "", 0, 0);
-  spriteStatus.pushSprite(186, 2);
+  spriteStatus.drawString(state, 32, 0);
+  spriteStatus.pushSprite(164, 2);
   spriteStatus.unloadFont();
   spriteStatus.deleteSprite();
 }
 
-void drawStatusBar(BatteryLevel battery, boolean btConnected) {
-  drawBT(btConnected);
+void drawStatusBar(BatteryLevel battery, boolean sensorOk, boolean btConnected) {
+  drawState(sensorOk, btConnected);
 
   switch (battery) {
+  case BAT_CHARGING:
+    drawBatteryStatus(ICON_BATTRY_CHARGING, TFT_GREEN);
+    break;
   case BAT_HIGH:
     drawBatteryStatus(ICON_BATTERY_HIGH);
     break;
@@ -191,6 +207,9 @@ void drawStatusBar(BatteryLevel battery, boolean btConnected) {
     break;
   case BAT_LOW:
     drawBatteryStatus(ICON_BATTERY_LOW, TFT_RED);
+    break;
+  case BAT_UNKNOWN:
+    drawBatteryStatus(ICON_BATTERY_EMPTY);
     break;
   }
 }
