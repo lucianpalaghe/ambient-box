@@ -30,6 +30,8 @@ const long interval = 2000;
 void drawMeasurements();
 void drawNextScreen();
 
+boolean isBTConnected();
+
 void initButtons();
 
 void initBatteryVref();
@@ -66,8 +68,7 @@ float temperatureCompensatedAltitude(int32_t pressure, float temp, float seaLeve
   return(altitude);
 } 
 
-boolean isSensorOk()
-{
+boolean isSensorOk() {
   if (sensor.status != BSEC_OK || sensor.bme680Status != BME680_OK) {
     Serial.println(sensor.status);
     Serial.println(sensor.bme680Status);
@@ -76,13 +77,16 @@ boolean isSensorOk()
   return true;
 }
 
+boolean isBTConnected() {
+  return false;
+}
+
 void loop() {
   unsigned long currentMillis = millis();
 
   if (currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis;
 
-    boolean btStatus = true;
     boolean sensorStatus = true;
     if (sensor.run()) { // if new sensor data is available
       sensorTemperature = sensor.temperature;
@@ -97,7 +101,7 @@ void loop() {
       sensorStatus = isSensorOk();
     }
 
-    drawStatusBar(getBatteryLevel(), sensorStatus, btStatus);
+    drawStatusBar(getBatteryLevel(), sensorStatus, isBTConnected());
   }
 
   btnTop.loop();
@@ -150,7 +154,7 @@ void initButtons() {
 
   btnTop.setLongClickHandler([](Button2 &b) {
     invertColorScheme();
-    drawStatusBar(getBatteryLevel(), false, true);
+    drawStatusBar(getBatteryLevel(), isSensorOk(), isBTConnected());
     drawMeasurements();
   });
 
