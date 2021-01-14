@@ -27,7 +27,8 @@ void drawMeasurementSprite(const char *value, const char *unitOfMeasure, ScreenA
 void drawMeasurementIcon(const char *value, ScreenArea area);
 void drawBatteryStatus(const char *value);
 void drawBatteryStatus(const char *value, uint16_t textColor);
-void drawState(boolean sensorState, boolean btState);
+void drawState(boolean sensorOk, BLEStatus bleStatus);
+void drawStatusIcon(const char *value, uint16_t textColor, uint8_t hOffset);
 
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite spriteTitle = TFT_eSprite(&tft);
@@ -57,7 +58,7 @@ void invertColorScheme() {
 void drawTemperature(float temp) {
   drawTitleSprite("Temperature", TOP);
   char tempChar[10];
-  drawMeasurementSprite(dtostrf(temp, -10, 1, tempChar), "\u2103", TOP);
+  drawMeasurementSprite(dtostrf(temp, 0, 1, tempChar), "\u2103", TOP);
 
   char tempIcon[4] = ICON_THERMOMETER;
   if(temp > 24) { // temperature higher than 24 C will display HOT icon
@@ -79,7 +80,7 @@ void drawAltitude(int16_t altitude) {
 void drawHumidity(float hum) {
   drawTitleSprite("Humidity", TOP);
   char humChar[5];
-  drawMeasurementSprite(dtostrf(hum, -10, 1, humChar), "%", TOP);
+  drawMeasurementSprite(dtostrf(hum, 0, 1, humChar), "%", TOP);
 
   char tempIcon[4] = ICON_DROP;
   if(hum > 95) { // humidity higher than 24 C will display UMBRELLA icon
@@ -91,7 +92,7 @@ void drawHumidity(float hum) {
 void drawPressure(float pa) {
   drawTitleSprite("Pressure", BOTTOM);
   char pressureChar[10];
-  drawMeasurementSprite(dtostrf(pa, -10, 0, pressureChar), "Pa", BOTTOM);
+  drawMeasurementSprite(dtostrf(pa, 0, 0, pressureChar), "Pa", BOTTOM);
   drawMeasurementIcon(ICON_PRESSURE, BOTTOM);
 }
 
@@ -220,29 +221,39 @@ void drawMeasurementIcon(const char *value, ScreenArea area) {
   spriteStatus.deleteSprite();
 }
 
-void drawState(boolean sensorState, boolean btState) {
-  String state = "";
-  if(!sensorState) {
-    state += ICON_WARNING;
+void drawState(boolean sensorOk, BLEStatus bleStatus) {
+  uint8_t leftHOffset = 0;
+
+  if(bleStatus == BLE_CONNECTED) {
+    drawStatusIcon(ICON_BLUETOOTH, TFT_BLUE, 0);
+    leftHOffset = 14;
+  } else if(bleStatus == BLE_ON) {
+    drawStatusIcon(ICON_BLUETOOTH, foregroundColor, 0);
+    leftHOffset = 14;
+  } else { // clear screen where the icon might have been
+    drawStatusIcon("", foregroundColor, 0);
   }
-  if(btState) {
-    state += ICON_BLUETOOTH;
+
+  if(!sensorOk) {
+    drawStatusIcon(ICON_WARNING, TFT_ORANGE, leftHOffset);
   }
-  
+}
+
+
+void drawStatusIcon(const char *value, uint16_t textColor, uint8_t hOffset) {
   spriteStatus.loadFont(AA_FONT_ICONS_BT);
   spriteStatus.createSprite(32, 18);
   spriteStatus.fillSprite(backgroundColor);
-  spriteStatus.setTextColor(foregroundColor, backgroundColor);
+  spriteStatus.setTextColor(textColor, backgroundColor);
   spriteStatus.setTextDatum(TR_DATUM);
-  spriteStatus.setTextSize(5);
-  spriteStatus.drawString(state, 32, 0);
-  spriteStatus.pushSprite(164, 2);
+  spriteStatus.drawString(value, 32, 0);
+  spriteStatus.pushSprite(164 - hOffset, 2);
   spriteStatus.unloadFont();
   spriteStatus.deleteSprite();
 }
 
-void drawStatusBar(BatteryLevel battery, boolean sensorOk, boolean btConnected) {
-  drawState(sensorOk, btConnected);
+void drawStatusBar(BatteryLevel battery, boolean sensorOk, BLEStatus bleStatus) {
+  drawState(sensorOk, bleStatus);
 
   switch (battery) {
   case BAT_CHARGING:

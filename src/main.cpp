@@ -10,6 +10,14 @@ const uint8_t bsec_config_iaq[] = {
 #include "config/generic_33v_3s_4d/bsec_iaq.txt"
 };
 
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEServer.h>
+#include <BLE2902.h>
+
+#define SERVICE_UUID "83613d85-967c-4a59-8190-e39097cf9a72"
+#define CHARACTERISTIC_UUID "0db3cc41-1fe7-49fc-9552-84df888df33b"
+
 #define PIN_BUTTON_TOP 35
 #define PIN_BUTTON_BOTTOM 0
 #define PIN_BACKLIGHT 4
@@ -30,7 +38,9 @@ const long interval = 2000;
 void drawMeasurements();
 void drawNextScreen();
 
-boolean isBTConnected();
+void initBLE();
+void notifyBLE();
+BLEStatus getBLEStatus();
 
 void initButtons();
 
@@ -50,12 +60,20 @@ float sensorPressure;
 float sensorIaq;
 uint8_t sensorIaqAccuracy;
 
+BLEServer* pServer = NULL;
+BLECharacteristic* pCharacteristic = NULL;
+boolean bleConnected = false;
+boolean wasBLEConncted = false;
+boolean isBleAdvertising = false;
+uint32_t value = 0;
+
 void setup(void) {
   Serial.begin(115200);
 
   pinMode(PIN_ADC, OUTPUT);
   digitalWrite(PIN_ADC, HIGH);
 
+  initBLE();
   initUI();
   initButtons();
   initBatteryVref();
@@ -75,10 +93,6 @@ boolean isSensorOk() {
     return false;
   }
   return true;
-}
-
-boolean isBTConnected() {
-  return false;
 }
 
 void loop() {
@@ -101,7 +115,9 @@ void loop() {
       sensorStatus = isSensorOk();
     }
 
-    drawStatusBar(getBatteryLevel(), sensorStatus, isBTConnected());
+    notifyBLE();
+
+    drawStatusBar(getBatteryLevel(), sensorStatus, getBLEStatus());
   }
 
   btnTop.loop();
@@ -142,6 +158,14 @@ BatteryLevel getBatteryLevel() {
   return BAT_UNKNOWN;
 }
 
+void drawNextScreen() {
+  currentScreen++;
+  if (currentScreen > 2) {
+    currentScreen = 0;
+  }
+  drawMeasurements();
+}
+
 void initButtons() {
   btnTop.setClickHandler([](Button2 &b) {
     backlightOn = !backlightOn;
@@ -154,21 +178,73 @@ void initButtons() {
 
   btnTop.setLongClickHandler([](Button2 &b) {
     invertColorScheme();
-    drawStatusBar(getBatteryLevel(), isSensorOk(), isBTConnected());
+    drawStatusBar(getBatteryLevel(), isSensorOk(), getBLEStatus());
     drawMeasurements();
   });
 
-  btnBottom.setPressedHandler([](Button2 &b) {
+  btnBottom.setClickHandler([](Button2 &b) {
     drawNextScreen();
+  });
+
+  btnBottom.setLongClickHandler([](Button2 &b) {
+    isBleAdvertising = !isBleAdvertising;
+    if(isBleAdvertising) {
+      BLEDevice::startAdvertising();
+    } else {
+      BLEDevice::getAdvertising()->stop();
+    }
   });
 }
 
-void drawNextScreen() {
-  currentScreen++;
-  if (currentScreen > 2) {
-    currentScreen = 0;
+class BLECallback: public BLEServerCallbacks {
+    void onConnect(BLEServer* pServer) {
+      bleConnected = true;
+    };
+
+    void onDisconnect(BLEServer* pServer) {
+      bleConnected = false;
+    }
+};
+
+void initBLE() {
+  BLEDevice::init("Ambient Box");
+  pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new BLECallback());
+  BLEService *pService = pServer->createService(SERVICE_UUID);
+  pCharacteristic = pService->createCharacteristic(CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_NOTIFY);
+  pCharacteristic->addDescriptor(new BLE2902());
+  pService->start();
+
+  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+  pAdvertising->addServiceUUID(SERVICE_UUID);
+  pAdvertising->setScanResponse(false);
+  pAdvertising->setAppearance(ESP_BLE_APPEARANCE_GENERIC_WATCH);
+  pAdvertising->setMinPreferred(0x0);  // set value to 0x00 to not advertise this parameter
+}
+
+void notifyBLE() {
+  if (bleConnected) {
+    char tempChar[10];
+    dtostrf(sensorTemperature, 0, 2, tempChar);
+    pCharacteristic->setValue(tempChar);
+    pCharacteristic->notify();
+    value++;
   }
-  drawMeasurements();
+  // disconnecting
+  if (!bleConnected && wasBLEConncted) {
+    pServer->startAdvertising(); // restart advertising
+    wasBLEConncted = bleConnected;
+  }
+}
+
+BLEStatus getBLEStatus() {
+  if(bleConnected) {
+    return BLE_CONNECTED;
+  } else if(isBleAdvertising) {
+    return BLE_ON;
+  } else {
+    return BLE_OFF;
+  }
 }
 
 void initSensor() {
