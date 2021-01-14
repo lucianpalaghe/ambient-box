@@ -1,4 +1,3 @@
-
 #include <Arduino.h>
 #include <SPI.h>
 #include <TFT_eSPI.h>
@@ -21,6 +20,14 @@
 
 #define MARGIN_LEFT 15
 #define MARGIN_TOP 10
+
+void drawTitleSprite(const char *text, ScreenArea area);
+void drawMeasurementSprite(const char *value, const char *unitOfMeasure, ScreenArea area);
+void drawMeasurementSprite(const char *value, const char *unitOfMeasure, ScreenArea area, uint32_t textColor);
+void drawMeasurementIcon(const char *value, ScreenArea area);
+void drawBatteryStatus(const char *value);
+void drawBatteryStatus(const char *value, uint16_t textColor);
+void drawState(boolean sensorState, boolean btState);
 
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite spriteTitle = TFT_eSprite(&tft);
@@ -63,7 +70,7 @@ void drawTemperature(float temp) {
 }
 
 void drawAltitude(int16_t altitude) {
-  drawTitleSprite("Altitude", BOTTOM);
+  drawTitleSprite("Altitude(~)", BOTTOM);
   char altitudeChar[10];
   drawMeasurementSprite(itoa(altitude, altitudeChar, 10), "m", BOTTOM);
   drawMeasurementIcon(ICON_MOUNTAIN, BOTTOM);
@@ -86,6 +93,44 @@ void drawPressure(float pa) {
   char pressureChar[10];
   drawMeasurementSprite(dtostrf(pa, -10, 0, pressureChar), "Pa", BOTTOM);
   drawMeasurementIcon(ICON_PRESSURE, BOTTOM);
+}
+
+void drawIAQ(float iaq) {
+  drawTitleSprite("IAQ", TOP);
+
+  if(iaq < 50) {
+    drawMeasurementSprite("Great", "", TOP, TFT_GREEN);
+  } else if(iaq < 100) {
+    drawMeasurementSprite("Good", "", TOP);
+  } else if(iaq < 200) {
+    drawMeasurementSprite("Bad", "", TOP, TFT_YELLOW);
+  } else {
+    drawMeasurementSprite("Horrible", "", TOP, TFT_RED);
+  }
+
+  drawMeasurementIcon("", TOP);
+}
+
+void drawIAQAccuracy(uint8_t accuracy) {
+  drawTitleSprite("Accuracy", BOTTOM);
+
+  switch (accuracy)
+  {
+  case IAQACC_STABILIZING:
+    drawMeasurementSprite("Stabilizing", "", BOTTOM);
+    break;
+  case IAQACC_LOW:
+    drawMeasurementSprite("Low", "", BOTTOM);
+    break;
+  case IAQACC_MEDIUM:
+    drawMeasurementSprite("Medium", "", BOTTOM);
+    break;
+  case IAQACC_HIGH:
+    drawMeasurementSprite("High", "", BOTTOM);
+    break;
+  }
+
+  // drawMeasurementIcon("", BOTTOM);
 }
 
 void drawTitleSprite(const char *text, ScreenArea area) {
@@ -111,6 +156,10 @@ void drawTitleSprite(const char *text, ScreenArea area) {
 }
 
 void drawMeasurementSprite(const char *value, const char *unitOfMeasure, ScreenArea area) {
+  drawMeasurementSprite(value, unitOfMeasure, area, foregroundColor);
+}
+
+void drawMeasurementSprite(const char *value, const char *unitOfMeasure, ScreenArea area, uint32_t textColor) {
   uint8_t verticalPosition = 0;
   switch (area) {
   case TOP:
@@ -122,9 +171,9 @@ void drawMeasurementSprite(const char *value, const char *unitOfMeasure, ScreenA
   }
 
   spriteMeasurement.loadFont(AA_FONT_LARGE);
-  spriteMeasurement.createSprite(SCREEN_WIDTH - MARGIN_LEFT - 45, 80);
+  spriteMeasurement.createSprite(SCREEN_WIDTH - MARGIN_LEFT - 25, 80);
   spriteMeasurement.fillSprite(backgroundColor);
-  spriteMeasurement.setTextColor(foregroundColor, backgroundColor);
+  spriteMeasurement.setTextColor(textColor, backgroundColor);
   spriteMeasurement.setTextDatum(TL_DATUM);
   uint16_t uomOffset = spriteMeasurement.drawString(value, 0, 0);
   spriteMeasurement.drawString(unitOfMeasure, uomOffset + 5, 0);

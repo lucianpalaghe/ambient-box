@@ -28,20 +28,19 @@ unsigned long previousMillis = 0;
 const long interval = 2000;
 
 void drawMeasurements();
+void drawNextScreen();
+
 void initButtons();
-void drawStatusBar();
+
+void initBatteryVref();
 BatteryLevel getBatteryLevel();
 float getBatteryVoltage();
-void initBatteryVref();
 
 void initSensor();
-float temperatureCompensatedAltitude(int32_t pressure, float temp=21.0, float seaLevel=1013.25);
 boolean isSensorOk();
+float temperatureCompensatedAltitude(int32_t pressure, float temp=21.0, float seaLevel=1013.25);
 
-// Create an object of the class Bsec
 Bsec sensor;
-String output;
-
 float sensorTemperature;
 float calculatedAltitude;
 float sensorHumidity;
@@ -114,7 +113,10 @@ void drawMeasurements() {
   case 1:
     drawHumidity(sensorHumidity);
     drawPressure(sensorPressure);
-  default:
+    break;
+  case 2:
+    drawIAQ(sensorIaq);
+    drawIAQAccuracy(sensorIaqAccuracy);
     break;
   }
 }
@@ -153,12 +155,16 @@ void initButtons() {
   });
 
   btnBottom.setPressedHandler([](Button2 &b) {
-    currentScreen++;
-    if (currentScreen > 1) {
-      currentScreen = 0;
-    }
-    drawMeasurements();
+    drawNextScreen();
   });
+}
+
+void drawNextScreen() {
+  currentScreen++;
+  if (currentScreen > 2) {
+    currentScreen = 0;
+  }
+  drawMeasurements();
 }
 
 void initSensor() {
