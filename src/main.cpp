@@ -150,9 +150,9 @@ BatteryLevel getBatteryLevel() {
   // float batteryVoltage = getBatteryVoltage();
 
   Serial.println(batteryVoltage);
-  if(batteryVoltage >= 4.85) {
+  if(batteryVoltage >= 4.8) {
     return BAT_CHARGING;
-  } else if(batteryVoltage < 4.85 && batteryVoltage > 3.6) {
+  } else if(batteryVoltage < 4.8 && batteryVoltage > 3.6) {
     return BAT_HIGH;
   } else if(batteryVoltage >= 3.3 && batteryVoltage < 3.6) {
     return BAT_MEDIUM;
@@ -266,7 +266,7 @@ void initSensor() {
   };
 
   sensor.updateSubscription(sensorList, 4, BSEC_SAMPLE_RATE_LP);
-  sensor.setTemperatureOffset(1.0);
+  sensor.setTemperatureOffset(9.0);
 }
 
 float getBatteryVoltage() {
