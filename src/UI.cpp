@@ -134,6 +134,14 @@ void drawIAQAccuracy(uint8_t accuracy) {
   // drawMeasurementIcon("", BOTTOM);
 }
 
+void drawBatteryVoltage(float vBatt) {
+  drawTitleSprite("Battery", TOP);
+  char battChar[5];
+  drawMeasurementSprite(dtostrf(vBatt, 0, 2, battChar), "V", TOP);
+
+  drawMeasurementSprite("", "", BOTTOM); // clear bottom screen part
+}
+
 void drawTitleSprite(const char *text, ScreenArea area) {
   uint8_t verticalPosition = 0;
   switch (area) {

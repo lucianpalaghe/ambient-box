@@ -67,11 +67,12 @@ boolean wasBLEConncted = false;
 boolean isBleAdvertising = false;
 uint32_t value = 0;
 
+float batteryVoltage = 0;
+
 void setup(void) {
   Serial.begin(115200);
 
-  pinMode(PIN_ADC, OUTPUT);
-  digitalWrite(PIN_ADC, HIGH);
+  pinMode(PIN_ADC_EN, OUTPUT);
 
   initBLE();
   initUI();
@@ -100,6 +101,7 @@ void loop() {
 
   if (currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis;
+    batteryVoltage = getBatteryVoltage(); // update global batteryVoltage value
 
     boolean sensorStatus = true;
     if (sensor.run()) { // if new sensor data is available
@@ -138,29 +140,32 @@ void drawMeasurements() {
     drawIAQ(sensorIaq);
     drawIAQAccuracy(sensorIaqAccuracy);
     break;
+  case 3:
+    drawBatteryVoltage(batteryVoltage);
+    break;
   }
 }
 
 BatteryLevel getBatteryLevel() {
-  float batteryVoltage = getBatteryVoltage();
+  // float batteryVoltage = getBatteryVoltage();
 
   Serial.println(batteryVoltage);
   if(batteryVoltage >= 4.85) {
     return BAT_CHARGING;
-  } else if(batteryVoltage >= 4.85 && batteryVoltage > 3.6) {
+  } else if(batteryVoltage < 4.85 && batteryVoltage > 3.6) {
     return BAT_HIGH;
   } else if(batteryVoltage >= 3.3 && batteryVoltage < 3.6) {
     return BAT_MEDIUM;
   } else if(batteryVoltage < 3.3) {
     return BAT_LOW;
+  } else {
+    return BAT_UNKNOWN;
   }
-
-  return BAT_UNKNOWN;
 }
 
 void drawNextScreen() {
   currentScreen++;
-  if (currentScreen > 2) {
+  if (currentScreen > 3) {
     currentScreen = 0;
   }
   drawMeasurements();
@@ -266,11 +271,11 @@ void initSensor() {
 
 float getBatteryVoltage() {
   digitalWrite(PIN_ADC_EN, HIGH);
-  delay(1);
-  float measurement = (float) analogRead(34);
-  float batteryVoltage = (measurement / 4095.0) * 2.0 * 3.3 * (vref / 1000.0);
+  delay(2); // a delay > 1 seems to be really important in order to get accurate readings...
+  uint16_t measurement = analogRead(PIN_ADC);
+  float vBatt = ((float) measurement / 4095.0) * 2.0 * 3.3 * (vref / 1000.0);
   digitalWrite(PIN_ADC_EN, LOW);
-  return batteryVoltage;
+  return vBatt;
 }
 
 void initBatteryVref() {
