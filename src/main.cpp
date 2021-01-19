@@ -115,11 +115,10 @@ void loop() {
       calculatedAltitude = temperatureCompensatedAltitude(sensorPressure, sensorTemperature);
 
       drawMeasurements();
+      notifyBLE();
     } else {
       sensorStatus = isSensorOk();
     }
-
-    notifyBLE();
 
     drawStatusBar(getBatteryLevel(), sensorStatus, getBLEStatus());
   }
@@ -244,7 +243,7 @@ void notifyBLE() {
   // client disconnected
   if (!bleConnected && wasBLEConncted) {
     pServer->startAdvertising(); // restart advertising
-    wasBLEConncted = bleConnected;
+    wasBLEConncted = false;
   }
 }
 
