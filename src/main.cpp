@@ -38,7 +38,7 @@ const long interval = 2000;
 void drawMeasurements();
 void drawNextScreen();
 
-void initBLE();
+void startBLE();
 void notifyBLE();
 BLEStatus getBLEStatus();
 
@@ -64,7 +64,7 @@ BLEServer* pServer = NULL;
 BLECharacteristic* pCharacteristic = NULL;
 boolean bleConnected = false;
 boolean wasBLEConncted = false;
-boolean isBleAdvertising = false;
+boolean isBleOn = false;
 uint32_t value = 0;
 
 float batteryVoltage = 0;
@@ -74,7 +74,6 @@ void setup(void) {
 
   pinMode(PIN_ADC_EN, OUTPUT);
 
-  initBLE();
   initUI();
   initButtons();
   initBatteryVref();
@@ -192,12 +191,12 @@ void initButtons() {
   });
 
   btnBottom.setLongClickHandler([](Button2 &b) {
-    isBleAdvertising = !isBleAdvertising;
-    if(isBleAdvertising) {
-      BLEDevice::startAdvertising();
+    if(!isBleOn) {
+      startBLE();
     } else {
-      BLEDevice::getAdvertising()->stop();
+      BLEDevice::deinit(false);
     }
+    isBleOn = !isBleOn;
   });
 }
 
@@ -211,7 +210,7 @@ class BLECallback: public BLEServerCallbacks {
     }
 };
 
-void initBLE() {
+void startBLE() {
   BLEDevice::init("Ambient Box");
   pServer = BLEDevice::createServer();
   pServer->setCallbacks(new BLECallback());
@@ -225,6 +224,8 @@ void initBLE() {
   pAdvertising->setScanResponse(false);
   pAdvertising->setAppearance(ESP_BLE_APPEARANCE_GENERIC_WATCH);
   pAdvertising->setMinPreferred(0x0);  // set value to 0x00 to not advertise this parameter
+
+  BLEDevice::startAdvertising();
 }
 
 void notifyBLE() {
@@ -235,7 +236,7 @@ void notifyBLE() {
     pCharacteristic->notify();
     value++;
   }
-  // disconnecting
+  // client disconnected
   if (!bleConnected && wasBLEConncted) {
     pServer->startAdvertising(); // restart advertising
     wasBLEConncted = bleConnected;
@@ -245,7 +246,7 @@ void notifyBLE() {
 BLEStatus getBLEStatus() {
   if(bleConnected) {
     return BLE_CONNECTED;
-  } else if(isBleAdvertising) {
+  } else if(isBleOn) {
     return BLE_ON;
   } else {
     return BLE_OFF;
@@ -266,7 +267,7 @@ void initSensor() {
   };
 
   sensor.updateSubscription(sensorList, 4, BSEC_SAMPLE_RATE_LP);
-  sensor.setTemperatureOffset(9.0);
+  sensor.setTemperatureOffset(5.0);
 }
 
 float getBatteryVoltage() {

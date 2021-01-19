@@ -61,9 +61,9 @@ void drawTemperature(float temp) {
   drawMeasurementSprite(dtostrf(temp, 0, 1, tempChar), "\u2103", TOP);
 
   char tempIcon[4] = ICON_THERMOMETER;
-  if(temp > 24) { // temperature higher than 24 C will display HOT icon
+  if(temp > 24.0) { // temperature higher than 24 C will display HOT icon
     strcpy(tempIcon, ICON_TEMP_HOT);
-  } else if(temp < 3) { // temperature lower than 3 C will display COLD icon
+  } else if(temp < 3.0) { // temperature lower than 3 C will display COLD icon
     strcpy(tempIcon, ICON_TEMP_COLD);
   }
 
