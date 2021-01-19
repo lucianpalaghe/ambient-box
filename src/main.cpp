@@ -1,19 +1,20 @@
 #include <Arduino.h>
 #include <Button2.h>
-#include "UI.h"
-#include "Icons.h"
-#include "esp_adc_cal.h"
-
+#include <esp_adc_cal.h>
 #include <Wire.h>
-#include "bsec.h"
-const uint8_t bsec_config_iaq[] = {
-#include "config/generic_33v_3s_4d/bsec_iaq.txt"
-};
-
+#include <bsec.h>
 #include <BLEDevice.h>
 #include <BLEUtils.h>
 #include <BLEServer.h>
 #include <BLE2902.h>
+#include <ArduinoJson.h>
+
+const uint8_t bsec_config_iaq[] = {
+  #include "config/generic_33v_3s_4d/bsec_iaq.txt"
+};
+
+#include "UI.h"
+#include "Icons.h"
 
 #define SERVICE_UUID "83613d85-967c-4a59-8190-e39097cf9a72"
 #define CHARACTERISTIC_UUID "0db3cc41-1fe7-49fc-9552-84df888df33b"
@@ -51,6 +52,7 @@ float getBatteryVoltage();
 void initSensor();
 boolean isSensorOk();
 float temperatureCompensatedAltitude(int32_t pressure, float temp=21.0, float seaLevel=1013.25);
+void serializeJsonPayload(char* payload);
 
 Bsec sensor;
 float sensorTemperature;
@@ -65,9 +67,10 @@ BLECharacteristic* pCharacteristic = NULL;
 boolean bleConnected = false;
 boolean wasBLEConncted = false;
 boolean isBleOn = false;
-uint32_t value = 0;
 
 float batteryVoltage = 0;
+
+DynamicJsonDocument doc(1024);
 
 void setup(void) {
   Serial.begin(115200);
@@ -212,6 +215,8 @@ class BLECallback: public BLEServerCallbacks {
 
 void startBLE() {
   BLEDevice::init("Ambient Box");
+  BLEDevice::setMTU(256);
+  
   pServer = BLEDevice::createServer();
   pServer->setCallbacks(new BLECallback());
   BLEService *pService = pServer->createService(SERVICE_UUID);
@@ -230,11 +235,11 @@ void startBLE() {
 
 void notifyBLE() {
   if (bleConnected) {
-    char tempChar[10];
-    dtostrf(sensorTemperature, 0, 2, tempChar);
-    pCharacteristic->setValue(tempChar);
+    char payload[256];
+    serializeJsonPayload(payload);
+
+    pCharacteristic->setValue(payload);
     pCharacteristic->notify();
-    value++;
   }
   // client disconnected
   if (!bleConnected && wasBLEConncted) {
@@ -268,6 +273,17 @@ void initSensor() {
 
   sensor.updateSubscription(sensorList, 4, BSEC_SAMPLE_RATE_LP);
   sensor.setTemperatureOffset(5.0);
+}
+
+void serializeJsonPayload(char* payload) {
+  doc["temperature"] = sensorTemperature;
+  doc["humidity"] = sensorHumidity;
+  doc["pressure"] = sensorPressure;
+  doc["altitude"] = calculatedAltitude;
+  doc["iaq"] = sensorIaq;
+  doc["iaqAccuracy"] = sensorIaqAccuracy;
+
+  serializeJson(doc, payload, 256);
 }
 
 float getBatteryVoltage() {
