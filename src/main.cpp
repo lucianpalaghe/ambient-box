@@ -15,6 +15,7 @@ const uint8_t bsec_config_iaq[] = {
 
 #include "UI.h"
 #include "Icons.h"
+#include "Battery.h"
 
 #define SERVICE_UUID "83613d85-967c-4a59-8190-e39097cf9a72"
 #define CHARACTERISTIC_UUID "0db3cc41-1fe7-49fc-9552-84df888df33b"
@@ -25,8 +26,6 @@ const uint8_t bsec_config_iaq[] = {
 #define PIN_ADC 34
 #define PIN_ADC_EN 14
 
-int vref = 1100;
-
 Button2 btnTop(PIN_BUTTON_TOP);
 Button2 btnBottom(PIN_BUTTON_BOTTOM);
 
@@ -34,7 +33,7 @@ uint8_t currentScreen = 0;
 boolean backlightOn = true;
 
 unsigned long previousMillis = 0;
-const long interval = 2000;
+const long interval = 2000; // screen refresh interval
 
 void drawMeasurements();
 void drawNextScreen();
@@ -44,10 +43,6 @@ void notifyBLE();
 BLEStatus getBLEStatus();
 
 void initButtons();
-
-void initBatteryVref();
-BatteryLevel getBatteryLevel();
-float getBatteryVoltage();
 
 void initSensor();
 boolean isSensorOk();
@@ -67,8 +62,6 @@ BLECharacteristic* pCharacteristic = NULL;
 boolean bleConnected = false;
 boolean wasBLEConncted = false;
 boolean isBleOn = false;
-
-float batteryVoltage = 0;
 
 DynamicJsonDocument doc(1024);
 
@@ -103,7 +96,6 @@ void loop() {
 
   if (currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis;
-    batteryVoltage = getBatteryVoltage(); // update global batteryVoltage value
 
     boolean sensorStatus = true;
     if (sensor.run()) { // if new sensor data is available
@@ -120,7 +112,7 @@ void loop() {
       sensorStatus = isSensorOk();
     }
 
-    drawStatusBar(getBatteryLevel(), sensorStatus, getBLEStatus());
+    drawStatusBar(getBatteryVoltage(), sensorStatus, getBLEStatus());
   }
 
   btnTop.loop();
@@ -142,25 +134,8 @@ void drawMeasurements() {
     drawIAQAccuracy(sensorIaqAccuracy);
     break;
   case 3:
-    drawBatteryVoltage(batteryVoltage);
+    drawBatteryVoltage(getBatteryVoltage());
     break;
-  }
-}
-
-BatteryLevel getBatteryLevel() {
-  // float batteryVoltage = getBatteryVoltage();
-
-  Serial.println(batteryVoltage);
-  if(batteryVoltage >= 4.8) {
-    return BAT_CHARGING;
-  } else if(batteryVoltage < 4.8 && batteryVoltage > 3.6) {
-    return BAT_HIGH;
-  } else if(batteryVoltage >= 3.3 && batteryVoltage < 3.6) {
-    return BAT_MEDIUM;
-  } else if(batteryVoltage < 3.3) {
-    return BAT_LOW;
-  } else {
-    return BAT_UNKNOWN;
   }
 }
 
@@ -184,7 +159,9 @@ void initButtons() {
 
   btnTop.setLongClickHandler([](Button2 &b) {
     invertColorScheme();
-    drawStatusBar(getBatteryLevel(), isSensorOk(), getBLEStatus());
+
+    // redraw whole scren
+    drawStatusBar(getBatteryVoltage(), isSensorOk(), getBLEStatus());
     drawMeasurements();
   });
 
@@ -283,24 +260,4 @@ void serializeJsonPayload(char* payload) {
   doc["iaqAccuracy"] = sensorIaqAccuracy;
 
   serializeJson(doc, payload, 256);
-}
-
-float getBatteryVoltage() {
-  digitalWrite(PIN_ADC_EN, HIGH);
-  delay(2); // a delay > 1 seems to be really important in order to get accurate readings...
-  uint16_t measurement = analogRead(PIN_ADC);
-  float vBatt = ((float) measurement / 4095.0) * 2.0 * 3.3 * (vref / 1000.0);
-  digitalWrite(PIN_ADC_EN, LOW);
-  return vBatt;
-}
-
-void initBatteryVref() {
-  esp_adc_cal_characteristics_t adc_chars;
-  // esp_adc_cal_value_t val_type = esp_adc_cal_characterize((adc_unit_t)ADC_UNIT_1, (adc_atten_t)ADC1_CHANNEL_6, (adc_bits_width_t)ADC_WIDTH_BIT_12, 1100, &adc_chars);
-  esp_adc_cal_value_t val_type = esp_adc_cal_characterize((adc_unit_t)ADC_UNIT_1, (adc_atten_t)ADC_ATTEN_DB_2_5, (adc_bits_width_t)ADC_WIDTH_BIT_12, 1100, &adc_chars);
-  if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF) {
-    vref = adc_chars.vref;
-  }
-  Serial.println(vref);
-  pinMode(PIN_ADC_EN, OUTPUT);
 }

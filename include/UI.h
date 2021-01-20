@@ -13,5 +13,5 @@ void drawHumidity(float hum);
 void drawPressure(float pa);
 void drawIAQ(float iaq);
 void drawIAQAccuracy(uint8_t accuracy);
-void drawBatteryVoltage(float vBatt);
-void drawStatusBar(BatteryLevel battery, boolean sensorOk, BLEStatus bleStatus);
+void drawBatteryVoltage(float batteryVoltage);
+void drawStatusBar(float batteryVoltage, boolean sensorOk, BLEStatus bleStatus);

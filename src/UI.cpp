@@ -29,6 +29,7 @@ void drawBatteryStatus(const char *value);
 void drawBatteryStatus(const char *value, uint16_t textColor);
 void drawState(boolean sensorOk, BLEStatus bleStatus);
 void drawStatusIcon(const char *value, uint16_t textColor, uint8_t hOffset);
+BatteryLevel getBatteryLevel(float batteryVoltage);
 
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite spriteTitle = TFT_eSprite(&tft);
@@ -41,9 +42,13 @@ uint32_t backgroundColor = TFT_BLACK;
 void initUI() {
   tft.begin();
   tft.setRotation(1);
-  spriteTitle.setColorDepth(16);
-  spriteMeasurement.setColorDepth(16);
-  spriteStatus.setColorDepth(16);
+  // spriteTitle.setColorDepth(16);
+  spriteTitle.loadFont(AA_FONT_SMALL);
+  spriteTitle.createSprite(SCREEN_WIDTH - MARGIN_LEFT - 76, 32);
+  // spriteMeasurement.setColorDepth(8);
+  spriteMeasurement.loadFont(AA_FONT_LARGE);
+  spriteMeasurement.createSprite(SCREEN_WIDTH - MARGIN_LEFT - 25, 80);
+  // spriteStatus.setColorDepth(8);
   tft.fillScreen(backgroundColor);
   
 }
@@ -57,8 +62,8 @@ void invertColorScheme() {
 
 void drawTemperature(float temp) {
   drawTitleSprite("Temperature", TOP);
-  char tempChar[10];
-  drawMeasurementSprite(dtostrf(temp, 0, 1, tempChar), "\u2103", TOP);
+  char tempChar[7];
+  drawMeasurementSprite(dtostrf(temp, 0, 1, tempChar), GLYPH_CELSIUS, TOP);
 
   char tempIcon[4] = ICON_THERMOMETER;
   if(temp > 24.0) { // temperature higher than 24 C will display HOT icon
@@ -153,15 +158,11 @@ void drawTitleSprite(const char *text, ScreenArea area) {
     break;
   }
 
-  spriteTitle.loadFont(AA_FONT_SMALL);
-  spriteTitle.createSprite(SCREEN_WIDTH - MARGIN_LEFT - 76, 32);
   spriteTitle.fillSprite(backgroundColor);
   spriteTitle.setTextColor(foregroundColor, backgroundColor);
   spriteTitle.setTextDatum(TL_DATUM);
   spriteTitle.drawString(text, 0, 0);
   spriteTitle.pushSprite(MARGIN_LEFT, verticalPosition + MARGIN_TOP);
-  spriteTitle.unloadFont();
-  spriteTitle.deleteSprite();
 }
 
 void drawMeasurementSprite(const char *value, const char *unitOfMeasure, ScreenArea area) {
@@ -179,16 +180,12 @@ void drawMeasurementSprite(const char *value, const char *unitOfMeasure, ScreenA
     break;
   }
 
-  spriteMeasurement.loadFont(AA_FONT_LARGE);
-  spriteMeasurement.createSprite(SCREEN_WIDTH - MARGIN_LEFT - 25, 80);
   spriteMeasurement.fillSprite(backgroundColor);
   spriteMeasurement.setTextColor(textColor, backgroundColor);
   spriteMeasurement.setTextDatum(TL_DATUM);
   uint16_t uomOffset = spriteMeasurement.drawString(value, 0, 0);
   spriteMeasurement.drawString(unitOfMeasure, uomOffset + 5, 0);
   spriteMeasurement.pushSprite(MARGIN_LEFT, verticalPosition + MARGIN_TOP);
-  spriteMeasurement.unloadFont();
-  spriteMeasurement.deleteSprite();
 }
 
 void drawBatteryStatus(const char *value) {
@@ -260,10 +257,10 @@ void drawStatusIcon(const char *value, uint16_t textColor, uint8_t hOffset) {
   spriteStatus.deleteSprite();
 }
 
-void drawStatusBar(BatteryLevel battery, boolean sensorOk, BLEStatus bleStatus) {
+void drawStatusBar(float batteryVoltage, boolean sensorOk, BLEStatus bleStatus) {
   drawState(sensorOk, bleStatus);
 
-  switch (battery) {
+  switch (getBatteryLevel(batteryVoltage)) {
   case BAT_CHARGING:
     drawBatteryStatus(ICON_BATTRY_CHARGING, TFT_GREEN);
     break;
@@ -279,5 +276,20 @@ void drawStatusBar(BatteryLevel battery, boolean sensorOk, BLEStatus bleStatus) 
   case BAT_UNKNOWN:
     drawBatteryStatus(ICON_BATTERY_EMPTY);
     break;
+  }
+}
+
+BatteryLevel getBatteryLevel(float batteryVoltage) {
+  Serial.println(batteryVoltage);
+  if(batteryVoltage >= 4.8) {
+    return BAT_CHARGING;
+  } else if(batteryVoltage < 4.8 && batteryVoltage > 3.6) {
+    return BAT_HIGH;
+  } else if(batteryVoltage >= 3.3 && batteryVoltage < 3.6) {
+    return BAT_MEDIUM;
+  } else if(batteryVoltage < 3.3) {
+    return BAT_LOW;
+  } else {
+    return BAT_UNKNOWN;
   }
 }

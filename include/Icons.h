@@ -15,3 +15,4 @@
 #define ICON_DENIED "\uEEAD"
 #define ICON_PRESSURE "\uEEE5"
 #define ICON_CLOUD "\uEEE8"
+#define GLYPH_CELSIUS "\u2103"

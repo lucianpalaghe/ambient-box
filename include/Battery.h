@@ -1,0 +1,2 @@
+float getBatteryVoltage();
+void initBatteryVref();
