@@ -281,13 +281,13 @@ void drawStatusBar(float batteryVoltage, boolean sensorOk, BLEStatus bleStatus) 
 
 BatteryLevel getBatteryLevel(float batteryVoltage) {
   Serial.println(batteryVoltage);
-  if(batteryVoltage >= 4.8) {
+  if(batteryVoltage >= 4.5) {
     return BAT_CHARGING;
-  } else if(batteryVoltage < 4.8 && batteryVoltage > 3.6) {
+  } else if(batteryVoltage >= 3.7) {
     return BAT_HIGH;
-  } else if(batteryVoltage >= 3.3 && batteryVoltage < 3.6) {
+  } else if(batteryVoltage >= 3.3) {
     return BAT_MEDIUM;
-  } else if(batteryVoltage < 3.3) {
+  } else if(batteryVoltage >= 2) {
     return BAT_LOW;
   } else {
     return BAT_UNKNOWN;
