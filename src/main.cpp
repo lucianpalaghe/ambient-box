@@ -248,7 +248,7 @@ void initSensor() {
   };
 
   sensor.updateSubscription(sensorList, 4, BSEC_SAMPLE_RATE_LP);
-  // sensor.setTemperatureOffset(5.0);
+  sensor.setTemperatureOffset(5.0);
 }
 
 void serializeJsonPayload(char* payload) {
