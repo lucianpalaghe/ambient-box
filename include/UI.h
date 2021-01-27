@@ -18,3 +18,4 @@ void drawBatteryVoltage(float batteryVoltage);
 void drawStatusBar(float batteryVoltage, boolean sensorOk, BLEStatus bleStatus);
 BatteryLevel getBatteryLevel(float batteryVoltage);
 IAQState getIaqState(float iaq);
+void drawLogo();

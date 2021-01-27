@@ -9,6 +9,7 @@
 #include "fonts/NotoSansBold36.h"
 #include "fonts/IcoFontBT18.h"
 #include "fonts/IcoFont36.h"
+#include "logo.h"
 
 #define AA_FONT_SMALL NotoSansBold15
 #define AA_FONT_LARGE NotoSansBold36
@@ -49,7 +50,13 @@ void initUI() {
   spriteMeasurement.createSprite(SCREEN_WIDTH - MARGIN_LEFT - 25, 80);
   // spriteStatus.setColorDepth(8);
   tft.fillScreen(backgroundColor);
-  
+}
+
+void drawLogo() {
+  tft.setSwapBytes(true);
+  tft.pushImage(0, 0,  240, 135, logo);
+  delay(2000);
+  tft.fillScreen(backgroundColor);
 }
 
 void invertColorScheme() {

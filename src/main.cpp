@@ -75,6 +75,8 @@ void setup(void) {
   initButtons();
   initBatteryVref();
   initSensor();
+
+  drawLogo();
 }
 
 float temperatureCompensatedAltitude(int32_t pressure, float temp, float seaLevel) {
