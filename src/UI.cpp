@@ -29,7 +29,6 @@ void drawBatteryStatus(const char *value);
 void drawBatteryStatus(const char *value, uint16_t textColor);
 void drawState(boolean sensorOk, BLEStatus bleStatus);
 void drawStatusIcon(const char *value, uint16_t textColor, uint8_t hOffset);
-BatteryLevel getBatteryLevel(float batteryVoltage);
 
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite spriteTitle = TFT_eSprite(&tft);
@@ -104,14 +103,19 @@ void drawPressure(float pa) {
 void drawIAQ(float iaq) {
   drawTitleSprite("IAQ", TOP);
 
-  if(iaq < 50) {
+ switch (getIaqState(iaq)) {
+  case IAQ_GREAT:
     drawMeasurementSprite("Great", "", TOP, TFT_GREEN);
-  } else if(iaq < 100) {
+    break;
+  case IAQ_GOOD:
     drawMeasurementSprite("Good", "", TOP);
-  } else if(iaq < 200) {
+    break;
+  case IAQ_BAD:
     drawMeasurementSprite("Bad", "", TOP, TFT_YELLOW);
-  } else {
+    break;
+  case IAQ_HORRIBLE:
     drawMeasurementSprite("Horrible", "", TOP, TFT_RED);
+    break;
   }
 
   drawMeasurementIcon("", TOP);
@@ -120,8 +124,7 @@ void drawIAQ(float iaq) {
 void drawIAQAccuracy(uint8_t accuracy) {
   drawTitleSprite("Accuracy", BOTTOM);
 
-  switch (accuracy)
-  {
+  switch (accuracy) {
   case IAQACC_STABILIZING:
     drawMeasurementSprite("Stabilizing", "", BOTTOM);
     break;
@@ -291,5 +294,17 @@ BatteryLevel getBatteryLevel(float batteryVoltage) {
     return BAT_LOW;
   } else {
     return BAT_UNKNOWN;
+  }
+}
+
+IAQState getIaqState(float iaq) {
+  if(iaq < 50) {
+    return IAQ_GREAT;
+  } else if(iaq < 100) {
+    return IAQ_GOOD;
+  } else if(iaq < 200) {
+    return IAQ_BAD;
+  } else {
+    return IAQ_HORRIBLE;
   }
 }

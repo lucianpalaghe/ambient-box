@@ -48,6 +48,7 @@ void initSensor();
 boolean isSensorOk();
 float temperatureCompensatedAltitude(int32_t pressure, float temp=21.0, float seaLevel=1013.25);
 void serializeJsonPayload(char* payload);
+void getBytePayload(uint8_t* payload);
 
 Bsec sensor;
 float sensorTemperature;
@@ -211,10 +212,13 @@ void startBLE() {
 
 void notifyBLE() {
   if (bleConnected) {
-    char payload[256];
-    serializeJsonPayload(payload);
+    // char payload[256];
+    // serializeJsonPayload(payload, 256);
 
-    pCharacteristic->setValue(payload);
+    uint8_t payload[20];
+    getBytePayload(payload);
+
+    pCharacteristic->setValue(payload, 20);
     pCharacteristic->notify();
   }
   // client disconnected
@@ -260,4 +264,22 @@ void serializeJsonPayload(char* payload) {
   doc["iaqAccuracy"] = sensorIaqAccuracy;
 
   serializeJson(doc, payload, 256);
+}
+
+
+void getBytePayload(uint8_t* payload) {
+  short altitude = round(calculatedAltitude);
+
+  uint8_t* arrayTemperature = reinterpret_cast<uint8_t*>(&sensorTemperature);
+  uint8_t* arrayHumidity = reinterpret_cast<uint8_t*>(&sensorHumidity);
+  uint8_t* arrayPressure = reinterpret_cast<uint8_t*>(&sensorPressure);
+  uint8_t* arrayAltitude = reinterpret_cast<uint8_t*>(&altitude);
+
+  memcpy(payload, arrayTemperature, 4);
+  memcpy(payload + 4, arrayHumidity, 4);
+  memcpy(payload + 8, arrayPressure, 4);
+  memcpy(payload + 12, arrayAltitude, 2);
+  payload[14] = getIaqState(sensorIaq);
+  payload[15] = sensorIaqAccuracy;
+  payload[16] = getBatteryLevel(getBatteryVoltage());
 }
