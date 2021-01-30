@@ -107,7 +107,7 @@ void loop() {
       sensorPressure = sensor.pressure;
       sensorIaq = sensor.iaq;
       sensorIaqAccuracy = sensor.iaqAccuracy;
-      calculatedAltitude = temperatureCompensatedAltitude(sensorPressure, sensorTemperature);
+      calculatedAltitude = temperatureCompensatedAltitude(sensorPressure);
 
       drawMeasurements();
       notifyBLE();
